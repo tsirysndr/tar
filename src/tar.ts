@@ -44,7 +44,7 @@ export async function compress(
       while (nowLoopList.length > 0) {
         for (const [folder, prefix] of nowLoopList) {
           for await (const entry of Deno.readDir(folder)) {
-            if (options && options.exclude?.includes(entry.name)) {
+            if (options && shouldExclude(entry.name, options?.exclude || [])) {
               continue;
             }
 
@@ -94,65 +94,6 @@ export async function compress(
   writer.close();
 }
 
-// Recursive way
-// export async function compress(
-//   src: string,
-//   dest: string,
-//   options?: compressInterface,
-// ): Promise<void> {
-//   const tar = new Tar();
-//   const stat = await Deno.lstat(src);
-//   if (stat.isFile) {
-//     await tar.append(path.basename(src), {
-//       filePath: src,
-//       contentSize: stat.size,
-//       mtime: (stat?.mtime ?? new Date()).valueOf() / 1000,
-//     });
-//   } else {
-//     const appendFolder = async (folder: string, prefix?: string) => {
-//       for await (const entry of Deno.readDir(folder)) {
-//         const { isDirectory, name } = entry;
-//         const fileName = prefix ? `${prefix}/${name}` : name;
-//         const filePath = path.resolve(folder, name);
-//         const stat = await Deno.stat(filePath);
-//         if (isDirectory) {
-//           await tar.append(
-//             `${fileName}/`,
-//             {
-//               reader: new Buffer(),
-//               contentSize: 0,
-//               type: "directory",
-//               mtime: (stat?.mtime ?? new Date()).valueOf() / 1000,
-//             },
-//           );
-//           await appendFolder(filePath, fileName);
-//         } else {
-//           await tar.append(fileName, {
-//             filePath,
-//             mtime: (stat?.mtime ?? new Date()).valueOf() / 1000,
-//             contentSize: stat.size,
-//           });
-//         }
-//       }
-//     };
-//     if (options?.excludeSrc) {
-//       await appendFolder(src);
-//     } else {
-//       const folderName = path.basename(src);
-//       await tar.append(
-//         `${folderName}/`,
-//         {
-//           filePath: src,
-//           // type: "directory",
-//           // mtime: (stat?.mtime ?? new Date()).valueOf() / 1000,
-//           // contentSize: 0,
-//           // reader: new Deno.Buffer(),
-//         },
-//       );
-//       await appendFolder(src, folderName);
-//     }
-//   }
-//   const writer = await Deno.open(dest, { write: true, create: true });
-//   await copy(tar.getReader(), writer);
-//   writer.close();
-// }
+function shouldExclude(entry: string, exclude: string[]): boolean {
+  return exclude.some((excludedDir) => entry.startsWith(excludedDir));
+}
