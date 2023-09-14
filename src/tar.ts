@@ -41,16 +41,26 @@ export async function compress(
       let nowLoopList: string[][] = [[folder, prefix || ""]];
       let nextLoopList: string[][] = [];
 
+      const shouldExcludeEntry = (entryName: string) => {
+        return options && shouldExclude(entryName, options?.exclude || []);
+      };
+
       while (nowLoopList.length > 0) {
         for (const [folder, prefix] of nowLoopList) {
           for await (const entry of Deno.readDir(folder)) {
-            if (options && shouldExclude(entry.name, options?.exclude || [])) {
+            const { isDirectory, name } = entry;
+            const filePath = path.resolve(folder, name);
+            const parentFolder = path.basename(folder);
+
+            if (isDirectory && shouldExcludeEntry(entry.name)) {
               continue;
             }
 
-            const { isDirectory, name } = entry;
+            if (!isDirectory && shouldExcludeEntry(parentFolder)) {
+              continue;
+            }
+
             const fileName = prefix ? `${prefix}/${name}` : name;
-            const filePath = path.resolve(folder, name);
             if (options?.debug) console.log(path.resolve(filePath));
             const stat = await Deno.stat(filePath);
             if (isDirectory) {
@@ -95,5 +105,5 @@ export async function compress(
 }
 
 function shouldExclude(entry: string, exclude: string[]): boolean {
-  return exclude.some((excludedDir) => entry.startsWith(excludedDir));
+  return exclude.some((excludedDir) => entry.includes(excludedDir));
 }

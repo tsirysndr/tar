@@ -42,6 +42,25 @@ Deno.test("tar.compress folder", async () => {
   }
 });
 
+Deno.test("tar.compress folder (excludes 'subdir')", async () => {
+  const src = "./test/tar";
+  const dest = "./test_exclude.tar";
+  try {
+    await tar.compress(src, dest, { debug: true, exclude: ["subdir"] });
+    const stat = await Deno.lstat(dest);
+    /**
+     * 4096 = 512 (header) + 0 (content) +  // tar folder
+     * 512 (header) + 512 (content) +       // tar.txt
+     * 1024 (footer)                        // footer
+     */
+    assertEquals(stat.size, 2560);
+    await Deno.remove(dest);
+  } catch (error) {
+    console.error(error);
+    assert(false);
+  }
+});
+
 Deno.test("tar.uncompress", async () => {
   const src = "./test/deno.tar";
   const dest = "./tar-test";
